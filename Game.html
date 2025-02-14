@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> Click Me Challenge</title>
+    <script>
+        // Configuration
+        const NEGATIVE_PHRASES = [
+            "No!Click", "NeverTap", "Avoid!", "Stop!", 
+            "Danger!", "Nope!", "Warning!", "Beware!",
+            "Don't!", "NotHere!", "BadChoice!", "Oops!"
+        ];
+        const POSITIVE_PHRASES = ["Click Me", "Correct","Hit Me"];
+        const POSITIVE_COLORS = [];
+        const NEGATIVE_HUES = Array.from({length: 12}, (_,i) => i * 30);
+
+        // Dynamic Generators
+        //const randomID = () => `id-${Math.random().toString(36).substr(2,9)}`;
+        const randomID = () => `id-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+        const randomClass = () => `cls-${Math.random().toString(36).substr(2,9)}`;
+        const randomTag = () => ['game-button', 'click-decoy', 'action-tile'][Math.floor(Math.random()*3)];
+
+        // Game State
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = true;
+        let currentTarget = null;
+        const gameAreaSize = 3000;
+        //initializeGame();
+        function initializeGame() {
+            document.body.style.cssText = `
+                min-width: ${gameAreaSize}px;
+                min-height: ${gameAreaSize}px;
+                overflow: auto;
+            `;
+            createDashboard();
+            createTarget();
+            createDecoys();
+            startTimer();
+            document.getElementById('startModal').style.display = 'none';
+        }
+
+        // Modified window load handler
+        window.onload = () => {
+            // Create start game modal
+            const modalHTML = `
+            
+                
+                <div id="startModal" class="start-modal">
+                    <div class="modal-content">
+                        <h1>Welcome! 👾</h1>
+                        <p>Click START to begin the challenge</p>
+                        <button onclick="initializeGame()" class="start-button">
+                            START GAME
+                            <div class="hover-effect"></div>
+                        </button>
+                    </div>
+                    <button class="help-btn" onclick="toggleInstructions()">
+                    <span class="material-symbols-outlined">help</span>
+                </button>
+
+                <div class="instructions-panel">
+                    <div class="panel-header">
+                        <h2>🌟 How to Play</h2>
+                        <button class="close-btn" onclick="toggleInstructions()">×</button>
+                    </div>
+                    <ul class="rules-list">
+                        <li><span class="emoji">🎯</span> Click glowing elements</li>
+                        <li><span class="emoji">💥</span> +1 point per correct click</li>
+                        <li><span class="emoji">🚫</span> -2 points for mistakes</li>
+                        <li><span class="emoji">⏳</span> 60 second limit</li>
+                    </ul>
+                </div>
+                </div>
+
+                
+            `;
+            document.body.innerHTML = modalHTML;
+        };
+
+        function createDashboard() {
+            const dashboardHTML = `
+                <div class="glass-panel score-board">
+                    <div class="neon-text" data-score>${score}</div>
+                    <div class="label">SCORE</div>
+                </div>
+                
+                <div class="glass-panel timer-board">
+                    <div class="neon-text" data-time>${timeLeft}</div>
+                    <div class="label">SECONDS</div>
+                </div>
+
+                <button class="help-btn" onclick="toggleInstructions()">
+                    <span class="material-symbols-outlined">Help</span>
+                </button>
+
+                <div class="instructions-panel">
+                    <div class="panel-header">
+                        <h2>🌟 How to Play</h2>
+                        <button class="close-btn" onclick="toggleInstructions()">×</button>
+                    </div>
+                    <ul class="rules-list">
+                        <li><span class="emoji">🎯</span> Click glowing elements</li>
+                        <li><span class="emoji">💥</span> +1 point per correct click</li>
+                        <li><span class="emoji">🚫</span> -2 points for mistakes</li>
+                        <li><span class="emoji">⏳</span> 60 second limit</li>
+                    </ul>
+                </div>
+            `;
+            document.body.innerHTML = dashboardHTML;
+        }
+
+        function createTarget() {
+            if(currentTarget) {
+                currentTarget.remove();
+                createParticles(currentTarget.getBoundingClientRect());
+            }
+            currentTargetClass = randomClass(); // Change class every time
+            currentTarget = document.createElement(randomTag());
+            currentTarget.className = currentTargetClass;
+            currentTarget.setAttribute('data-target', randomID());
+            const phrase = POSITIVE_PHRASES[Math.floor(Math.random()*POSITIVE_PHRASES.length)];
+                
+            currentTarget.innerHTML = `
+                    <div class="danger-pulse"></div>
+                    <span class="warning-text">${phrase}</span>
+                `;
+           // currentTarget.textContent = 'ClickMe!';
+            const hue =Math.random()*360;
+            currentTarget.style.cssText = `
+                position: absolute;
+                --hue: ${hue};
+                left: ${Math.random()*(gameAreaSize)}px;
+                top: ${Math.random()*(gameAreaSize)}px;
+
+                
+            cursor: pointer;
+            padding: 15px 30px;
+            border-radius: 12px;
+            background: hsl(var(--hue), 70%, 40%);
+            transition: all 0.3s;
+            overflow: hidden;
+            `;
+            
+
+            currentTarget.onclick = () => {
+                if(gameActive) {
+                    score++;
+                    document.querySelector('[data-score]').textContent = score;
+                    createTarget();
+                    createDecoys();
+                    animateScoreChange('+1', '#4CAF50');
+                }
+            };
+
+            document.body.appendChild(currentTarget);
+        }
+
+        function createDecoys() {
+            document.querySelectorAll('.decoy').forEach(d => d.remove());
+            currentDecoyClass = randomClass(); // New class for new decoys
+            for(let i=0; i<12; i++) {
+               // const decoy = document.createElement(randomTag());
+               // decoy.className = `decoy ${randomClass()}`;
+               // decoy.setAttribute('data-target', randomID());
+                
+               // const hue = NEGATIVE_HUES[Math.floor(Math.random()*NEGATIVE_HUES.length)];
+               // const phrase = NEGATIVE_PHRASES[Math.floor(Math.random()*NEGATIVE_PHRASES.length)];
+                
+               
+                const decoy = document.createElement(randomTag());
+                decoy.className = currentDecoyClass;
+                decoy.setAttribute('data-target', randomID());
+                const hue = NEGATIVE_HUES[Math.floor(Math.random()*NEGATIVE_HUES.length)];
+                const phrase = NEGATIVE_PHRASES[Math.floor(Math.random()*NEGATIVE_PHRASES.length)];
+                decoy.innerHTML = `
+                    <div class="danger-pulse"></div>
+                    <span class="warning-text">${phrase}</span>
+                `;
+               // decoy.textContent = 'DontClick';
+                decoy.style.cssText = `
+                    position: absolute;
+                    --hue: ${hue};
+                    left: ${Math.random()*gameAreaSize}px;
+                    top: ${Math.random()*gameAreaSize}px;
+                   cursor: pointer;
+            padding: 15px 30px;
+            border-radius: 12px;
+            background: hsl(var(--hue), 70%, 40%);
+            transition: all 0.3s;
+            overflow: hidden;
+                `;
+                
+                decoy.onclick = () => {
+                    if(gameActive) {
+                        score = Math.max(0, score-2);
+                        document.querySelector('[data-score]').textContent = score;
+                        animateScoreChange('-2', '#ff4444');
+                        decoy.classList.add('shake');
+                        setTimeout(() => decoy.classList.remove('shake'), 500);
+                    }
+                };
+
+                document.body.appendChild(decoy);
+            }
+        }
+
+        function animateScoreChange(text, color) {
+            const anim = document.createElement('div');
+            anim.className = 'score-animation';
+            anim.textContent = text;
+            anim.style.color = color;
+            document.body.appendChild(anim);
+            setTimeout(() => anim.remove(), 1000);
+        }
+
+        function createParticles(rect) {
+            for(let i=0; i<20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.cssText = `
+                    left: ${rect.left + rect.width/2}px;
+                    top: ${rect.top + rect.height/2}px;
+                    background: hsl(${Math.random()*360}, 70%, 60%);
+                    --angle: ${Math.random() * 360}deg;
+                `;
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        function toggleInstructions() {
+            document.querySelector('.instructions-panel').classList.toggle('visible');
+        }
+
+        function startTimer() {
+            const timer = setInterval(() => {
+                timeLeft--;
+                document.querySelector('[data-time]').textContent = timeLeft;
+                if(timeLeft <= 0) {
+                    gameActive = false;
+                    clearInterval(timer);
+                    showGameOver();
+                }
+            }, 1000);
+        }
+
+        function showGameOver() {
+            const gameOver = document.createElement('div');
+            gameOver.className = 'game-over-screen';
+            gameOver.innerHTML = `
+                <div class="result-card">
+                    <h2>GAME OVER</h2>
+                    <div class="final-score">${score} POINTS</div>
+                    <button class="neon-button" onclick="location.reload()">
+                        PLAY AGAIN
+                        <div class="neon-border"></div>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(gameOver);
+        }
+
+     //   window.onload = () => {
+      //      document.body.style.cssText = `
+       //         min-width: ${gameAreaSize}px;
+        //        min-height: ${gameAreaSize}px;
+         //       overflow: auto;
+         //   `;
+          //  createDashboard();
+          //  createTarget();
+          //  createDecoys();
+          //  startTimer();
+      //  };
+        
+       
+
+    </script>
+    <style>
+        :root {
+            --hue: 200;
+            --glass-bg: rgba(255,255,255,0.1);
+            --glass-border: rgba(255,255,255,0.2);
+            --neon-color: hsl(var(--hue), 100%, 50%);
+        }
+        
+        .instructions {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            position: fixed;
+            top: 150px;
+            left: 20px;
+            width: 280px;
+            transform: translateX(-120%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        [data-decoy]:hover {
+            transform: rotate(3deg) scale(1.1);
+        }
+        .instructions-panel {
+            position: fixed;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%) translateX(-120%);
+            width: 320px;
+            background: rgba(32, 32, 32, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            z-index: 2000;
+        }
+        /* Start Game Modal Styles */
+        .start-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            max-width: 500px;
+        }
+
+        .start-button {
+            position: relative;
+            background: #27ae60;
+            border: none;
+            color: white;
+            padding: 20px 50px;
+            font-size: 1.5em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 30px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .hover-effect {
+            position: absolute;
+            background: rgba(255,255,255,0.2);
+            width: 100px;
+            height: 100%;
+            left: -120%;
+            top: 0;
+            transform: skewX(-30deg);
+            transition: left 0.5s;
+        }
+
+        .start-button:hover .hover-effect {
+            left: 150%;
+        }
+
+        .start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(39, 174, 96, 0.5);
+        }
+        .instructions-panel.visible {
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #00bcd4, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0 10px;
+            transition: transform 0.3s;
+        }
+
+        .close-btn:hover {
+            transform: rotate(90deg);
+            color: #ff4444;
+        }
+
+        .rules-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .rules-list li {
+            padding: 12px 0;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .rules-list li:last-child {
+            border-bottom: none;
+        }
+
+        .emoji {
+            font-size: 1.4em;
+            margin-right: 15px;
+            width: 30px;
+            display: inline-block;
+            text-align: center;
+        }
+        .instructions.show {
+            transform: translateX(0);
+        }
+
+        .instructions h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+        .stat-item {
+            margin: 12px 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        .game-stats {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        .instructions ul {
+            padding-left: 20px;
+            color: #34495e;
+            line-height: 1.6;
+        }
+
+        .instructions li {
+            margin-bottom: 12px;
+        }
+        body {
+            margin: 0;
+            background: radial-gradient(circle at center, #1a1a1a, #000);
+            color: white;
+            font-family: 'Segoe UI', system-ui;
+            overflow: hidden;
+        }
+
+        /* Premium Dashboard */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            position: fixed;
+        }
+
+        .score-board {
+            top: 30px;
+            left: 30px;
+        }
+
+        .timer-board {
+            top: 30px;
+            right: 30px;
+        }
+
+        .neon-text {
+            font-size: 2.5em;
+            font-weight: 700;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .help-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .help-btn:hover {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Dynamic Elements */
+        .target {
+            position: absolute;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: transform 0.3s;
+            overflow: hidden;
+        }
+
+        .target:hover {
+            transform: scale(1.05);
+        }
+
+        .glow-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, 
+                hsl(var(--hue), 80%, 70%), 
+                hsl(var(--hue), 80%, 30%));
+            opacity: 0.4;
+            filter: blur(20px);
+        }
+
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid hsl(var(--hue), 100%, 50%);
+            border-radius: inherit;
+            animation: pulse 2s infinite;
+        }
+
+        .target-text {
+            position: relative;
+            z-index: 1;
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 20px 40px;
+            display: block;
+        }
+
+        .decoy {
+            position: absolute;
+            cursor: pointer;
+            padding: 15px 30px;
+            border-radius: 12px;
+            background: hsl(var(--hue), 70%, 40%);
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .decoy:hover {
+            background: hsl(var(--hue), 80%, 45%);
+            box-shadow: 0 0 20px hsl(var(--hue), 100%, 50%);
+        }
+
+        .warning-text {
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255,0,0,0.5);
+        }
+
+        .danger-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid hsl(var(--hue), 100%, 50%);
+            border-radius: inherit;
+            animation: danger-pulse 1.5s infinite;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.1); }
+            100% { opacity: 0.8; transform: scale(1); }
+        }
+
+        @keyframes danger-pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.2; }
+            100% { opacity: 0.5; }
+        }
+
+        .score-animation {
+            position: fixed;
+            font-size: 1.5em;
+            font-weight: bold;
+            animation: float-up 1s ease-out;
+        }
+
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: particle-spread 0.6s ease-out;
+        }
+
+        @keyframes particle-spread {
+            from { transform: translate(0,0); opacity: 1; }
+            to { transform: translate(var(--distance),0) rotate(var(--angle)); opacity: 0; }
+        }
+
+        /* Game Over Screen */
+        .game-over-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            display: grid;
+            place-items: center;
+        }
+
+        .result-card {
+            background: rgba(0,0,0,0.6);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 40px rgba(0,0,0,0.3);
+        }
+
+        .neon-button {
+            position: relative;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .neon-border {
+            position: absolute;
+            inset: 0;
+            border: 2px solid #fff;
+            border-radius: 30px;
+            filter: drop-shadow(0 0 10px #fff);
+            animation: neon-flicker 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+</body>
+</html>
